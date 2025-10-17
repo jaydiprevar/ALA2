@@ -1,2 +1,2 @@
 # ALA2
-CNS ALA2
+ https://jaydiprevar.github.io/ALA2/
