@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Malware Behavior Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #ffeb3b;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .control-card h3 {
+            margin-bottom: 15px;
+            color: #ffeb3b;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .virus-btn {
+            background: #f44336;
+            color: white;
+        }
+
+        .virus-btn:hover {
+            background: #d32f2f;
+            transform: translateY(-2px);
+        }
+
+        .worm-btn {
+            background: #ff9800;
+            color: white;
+        }
+
+        .worm-btn:hover {
+            background: #f57c00;
+            transform: translateY(-2px);
+        }
+
+        .trojan-btn {
+            background: #9c27b0;
+            color: white;
+        }
+
+        .trojan-btn:hover {
+            background: #7b1fa2;
+            transform: translateY(-2px);
+        }
+
+        .reset-btn {
+            background: #4caf50;
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: #388e3c;
+            transform: translateY(-2px);
+        }
+
+        .simulation-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .network-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .node {
+            aspect-ratio: 1;
+            background: #2196f3;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            transition: all 0.3s;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .node.healthy {
+            background: #4caf50;
+        }
+
+        .node.infected {
+            background: #f44336;
+            animation: pulse 1s infinite;
+        }
+
+        .node.worm-infected {
+            background: #ff9800;
+            animation: spread 0.5s infinite;
+        }
+
+        .node.trojan {
+            background: #9c27b0;
+            animation: blink 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes spread {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        @keyframes blink {
+            0%, 90% { background: #2196f3; }
+            95%, 100% { background: #9c27b0; }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ffeb3b;
+        }
+
+        .log-area {
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 8px;
+            margin: 5px 0;
+            border-left: 3px solid;
+            padding-left: 15px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .log-virus { border-color: #f44336; }
+        .log-worm { border-color: #ff9800; }
+        .log-trojan { border-color: #9c27b0; }
+        .log-system { border-color: #4caf50; }
+
+        .report {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 30px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .report.active {
+            display: block;
+        }
+
+        .report h2 {
+            color: #1e3c72;
+            margin-bottom: 20px;
+        }
+
+        .report h3 {
+            color: #2a5298;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .report ul {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .legend-color {
+            width: 30px;
+            height: 30px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Malware Behavior Simulator</h1>
+            <p class="subtitle">Educational Tool for Understanding Cybersecurity Threats</p>
+        </header>
+
+        <div class="controls">
+            <div class="control-card">
+                <h3>🦠 Virus Simulation</h3>
+                <p style="margin-bottom: 10px; font-size: 0.9em;">Requires host file to spread. Infects adjacent nodes when activated.</p>
+                <button class="virus-btn" onclick="simulateVirus()">Simulate Virus</button>
+            </div>
+            <div class="control-card">
+                <h3>🐛 Worm Simulation</h3>
+                <p style="margin-bottom: 10px; font-size: 0.9em;">Self-replicating. Spreads automatically across network.</p>
+                <button class="worm-btn" onclick="simulateWorm()">Simulate Worm</button>
+            </div>
+            <div class="control-card">
+                <h3>🎭 Trojan Simulation</h3>
+                <p style="margin-bottom: 10px; font-size: 0.9em;">Disguised as legitimate. Reveals true nature over time.</p>
+                <button class="trojan-btn" onclick="simulateTrojan()">Simulate Trojan</button>
+            </div>
+        </div>
+
+        <div class="simulation-area">
+            <h2 style="margin-bottom: 15px;">Network Simulation Grid</h2>
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4caf50;"></div>
+                    <span>Healthy</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f44336;"></div>
+                    <span>Virus</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #ff9800;"></div>
+                    <span>Worm</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9c27b0;"></div>
+                    <span>Trojan</span>
+                </div>
+            </div>
+            <div class="network-grid" id="networkGrid"></div>
+            <div class="stats">
+                <div class="stat-box">
+                    <div>Healthy Nodes</div>
+                    <div class="stat-value" id="healthyCount">64</div>
+                </div>
+                <div class="stat-box">
+                    <div>Infected Nodes</div>
+                    <div class="stat-value" id="infectedCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div>Infection Rate</div>
+                    <div class="stat-value" id="infectionRate">0%</div>
+                </div>
+            </div>
+            <button class="reset-btn" onclick="resetSimulation()">Reset Simulation</button>
+        </div>
+
+        <div class="log-area">
+            <h2 style="margin-bottom: 15px;">Activity Log</h2>
+            <div id="logContainer"></div>
+        </div>
+
+        <div class="report" id="reportArea">
+            <h2>📊 Malware Analysis Report</h2>
+            <div id="reportContent"></div>
+        </div>
+
+        <button class="reset-btn" onclick="generateReport()" style="margin-bottom: 20px;">Generate Detailed Report</button>
+    </div>
+
+    <script>
+        const GRID_SIZE = 64;
+        let nodes = [];
+        let simulationData = {
+            virus: { activated: false, infections: 0, spreadTime: [] },
+            worm: { activated: false, infections: 0, spreadTime: [] },
+            trojan: { activated: false, infections: 0, spreadTime: [] }
+        };
+
+        function initializeGrid() {
+            const grid = document.getElementById('networkGrid');
+            grid.innerHTML = '';
+            nodes = [];
+            
+            for (let i = 0; i < GRID_SIZE; i++) {
+                const node = document.createElement('div');
+                node.className = 'node healthy';
+                node.innerHTML = '💻';
+                node.dataset.index = i;
+                node.dataset.status = 'healthy';
+                grid.appendChild(node);
+                nodes.push(node);
+            }
+            updateStats();
+        }
+
+        function updateStats() {
+            const healthy = nodes.filter(n => n.dataset.status === 'healthy').length;
+            const infected = GRID_SIZE - healthy;
+            const rate = ((infected / GRID_SIZE) * 100).toFixed(1);
+            
+            document.getElementById('healthyCount').textContent = healthy;
+            document.getElementById('infectedCount').textContent = infected;
+            document.getElementById('infectionRate').textContent = rate + '%';
+        }
+
+        function addLog(message, type) {
+            const log = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString();
+            entry.textContent = `[${time}] ${message}`;
+            log.insertBefore(entry, log.firstChild);
+        }
+
+        function simulateVirus() {
+            if (simulationData.virus.activated) {
+                addLog('Virus simulation already running!', 'system');
+                return;
+            }
+            
+            simulationData.virus.activated = true;
+            const startNode = Math.floor(Math.random() * GRID_SIZE);
+            addLog('🦠 VIRUS DETECTED: Requires host file to execute', 'virus');
+            addLog(`Initial infection at Node ${startNode}`, 'virus');
+            
+            infectNode(startNode, 'infected', '🦠');
+            simulationData.virus.infections++;
+            
+            let spreadCount = 0;
+            const virusInterval = setInterval(() => {
+                const infectedNodes = nodes.filter(n => n.dataset.status === 'infected');
+                
+                if (infectedNodes.length === 0 || spreadCount >= 15) {
+                    clearInterval(virusInterval);
+                    addLog('Virus simulation complete - Requires user action to spread further', 'virus');
+                    return;
+                }
+                
+                infectedNodes.forEach(node => {
+                    const index = parseInt(node.dataset.index);
+                    const neighbors = getNeighbors(index);
+                    
+                    neighbors.forEach(nIndex => {
+                        if (nodes[nIndex].dataset.status === 'healthy' && Math.random() > 0.7) {
+                            infectNode(nIndex, 'infected', '🦠');
+                            simulationData.virus.infections++;
+                            simulationData.virus.spreadTime.push(Date.now());
+                            addLog(`Virus spread to Node ${nIndex} via infected file`, 'virus');
+                        }
+                    });
+                });
+                
+                spreadCount++;
+            }, 1000);
+        }
+
+        function simulateWorm() {
+            if (simulationData.worm.activated) {
+                addLog('Worm simulation already running!', 'system');
+                return;
+            }
+            
+            simulationData.worm.activated = true;
+            const startNode = Math.floor(Math.random() * GRID_SIZE);
+            addLog('🐛 WORM DETECTED: Self-replicating malware initiated', 'worm');
+            addLog(`Worm entry point: Node ${startNode}`, 'worm');
+            
+            infectNode(startNode, 'worm-infected', '🐛');
+            simulationData.worm.infections++;
+            
+            const wormInterval = setInterval(() => {
+                const wormNodes = nodes.filter(n => n.dataset.status === 'worm-infected');
+                
+                if (wormNodes.length >= GRID_SIZE * 0.8) {
+                    clearInterval(wormInterval);
+                    addLog('Worm has infected majority of network - Quarantine recommended', 'worm');
+                    return;
+                }
+                
+                wormNodes.forEach(node => {
+                    const index = parseInt(node.dataset.index);
+                    const neighbors = getNeighbors(index);
+                    
+                    neighbors.forEach(nIndex => {
+                        if (nodes[nIndex].dataset.status === 'healthy' && Math.random() > 0.5) {
+                            infectNode(nIndex, 'worm-infected', '🐛');
+                            simulationData.worm.infections++;
+                            simulationData.worm.spreadTime.push(Date.now());
+                            addLog(`Worm replicated to Node ${nIndex} autonomously`, 'worm');
+                        }
+                    });
+                });
+            }, 800);
+        }
+
+        function simulateTrojan() {
+            if (simulationData.trojan.activated) {
+                addLog('Trojan simulation already running!', 'system');
+                return;
+            }
+            
+            simulationData.trojan.activated = true;
+            const targetNodes = [];
+            
+            for (let i = 0; i < 5; i++) {
+                let nodeIndex;
+                do {
+                    nodeIndex = Math.floor(Math.random() * GRID_SIZE);
+                } while (targetNodes.includes(nodeIndex));
+                targetNodes.push(nodeIndex);
+            }
+            
+            addLog('🎭 TROJAN DETECTED: Disguised as legitimate software', 'trojan');
+            addLog('Trojan appears normal but contains malicious payload', 'trojan');
+            
+            targetNodes.forEach((nodeIndex, i) => {
+                setTimeout(() => {
+                    nodes[nodeIndex].dataset.status = 'trojan';
+                    nodes[nodeIndex].className = 'node trojan';
+                    nodes[nodeIndex].innerHTML = '🎭';
+                    simulationData.trojan.infections++;
+                    addLog(`Trojan activated on Node ${nodeIndex} - Backdoor opened`, 'trojan');
+                }, i * 2000);
+            });
+            
+            setTimeout(() => {
+                addLog('Trojan payload executed - Stealing data and creating backdoors', 'trojan');
+            }, 10000);
+        }
+
+        function infectNode(index, status, icon) {
+            nodes[index].dataset.status = status;
+            nodes[index].className = `node ${status}`;
+            nodes[index].innerHTML = icon;
+            updateStats();
+        }
+
+        function getNeighbors(index) {
+            const neighbors = [];
+            const row = Math.floor(index / 8);
+            const col = index % 8;
+            
+            if (col > 0) neighbors.push(index - 1);
+            if (col < 7) neighbors.push(index + 1);
+            if (row > 0) neighbors.push(index - 8);
+            if (row < 7) neighbors.push(index + 8);
+            
+            return neighbors;
+        }
+
+        function resetSimulation() {
+            simulationData = {
+                virus: { activated: false, infections: 0, spreadTime: [] },
+                worm: { activated: false, infections: 0, spreadTime: [] },
+                trojan: { activated: false, infections: 0, spreadTime: [] }
+            };
+            initializeGrid();
+            document.getElementById('logContainer').innerHTML = '';
+            document.getElementById('reportArea').classList.remove('active');
+            addLog('System reset - All threats neutralized', 'system');
+        }
+
+        function generateReport() {
+            const report = document.getElementById('reportContent');
+            const reportArea = document.getElementById('reportArea');
+            
+            report.innerHTML = `
+                <h3>Executive Summary</h3>
+                <p>This report analyzes the behavior and impact of three major malware types: Viruses, Worms, and Trojans. Each exhibits unique characteristics in how they spread, replicate, and compromise systems.</p>
+                
+                <h3>1. Virus Analysis</h3>
+                <ul>
+                    <li><strong>Infections:</strong> ${simulationData.virus.infections} nodes</li>
+                    <li><strong>Propagation Method:</strong> Requires host file attachment</li>
+                    <li><strong>Spread Pattern:</strong> User-dependent, spreads when infected files are executed</li>
+                    <li><strong>Characteristics:</strong> Cannot spread independently; needs human interaction or program execution</li>
+                    <li><strong>Impact:</strong> Moderate to high - Depends on user behavior and file sharing patterns</li>
+                    <li><strong>Detection:</strong> Antivirus signatures can identify known virus patterns</li>
+                    <li><strong>Prevention:</strong> Avoid executing unknown files, use updated antivirus software, scan email attachments</li>
+                </ul>
+                
+                <h3>2. Worm Analysis</h3>
+                <ul>
+                    <li><strong>Infections:</strong> ${simulationData.worm.infections} nodes</li>
+                    <li><strong>Propagation Method:</strong> Self-replicating via network vulnerabilities</li>
+                    <li><strong>Spread Pattern:</strong> Autonomous and rapid, exploits network connections</li>
+                    <li><strong>Characteristics:</strong> No human interaction needed; spreads automatically across connected systems</li>
+                    <li><strong>Impact:</strong> High to critical - Can cause widespread network congestion and system failures</li>
+                    <li><strong>Detection:</strong> Network monitoring tools can detect unusual traffic patterns</li>
+                    <li><strong>Prevention:</strong> Patch systems regularly, use firewalls, implement network segmentation</li>
+                </ul>
+                
+                <h3>3. Trojan Analysis</h3>
+                <ul>
+                    <li><strong>Infections:</strong> ${simulationData.trojan.infections} nodes</li>
+                    <li><strong>Propagation Method:</strong> Disguised as legitimate software</li>
+                    <li><strong>Spread Pattern:</strong> Social engineering-based, relies on user deception</li>
+                    <li><strong>Characteristics:</strong> Appears benign but contains malicious payload; creates backdoors</li>
+                    <li><strong>Impact:</strong> Critical - Can steal data, create remote access points, install additional malware</li>
+                    <li><strong>Detection:</strong> Behavioral analysis and sandboxing can reveal malicious activities</li>
+                    <li><strong>Prevention:</strong> Download software from trusted sources only, verify digital signatures, user education</li>
+                </ul>
+                
+                <h3>Key Differences</h3>
+                <ul>
+                    <li><strong>Replication:</strong> Viruses need hosts, Worms self-replicate, Trojans don't replicate</li>
+                    <li><strong>User Interaction:</strong> Viruses require execution, Worms are autonomous, Trojans need initial installation</li>
+                    <li><strong>Visibility:</strong> Viruses are noticeable, Worms spread visibly, Trojans remain hidden</li>
+                    <li><strong>Primary Goal:</strong> Viruses damage/spread, Worms spread rapidly, Trojans provide unauthorized access</li>
+                </ul>
+                
+                <h3>Defense Strategies</h3>
+                <ul>
+                    <li><strong>Layered Security:</strong> Implement multiple security controls (antivirus, firewall, IDS/IPS)</li>
+                    <li><strong>Regular Updates:</strong> Keep all software and systems patched against known vulnerabilities</li>
+                    <li><strong>User Training:</strong> Educate users about phishing, social engineering, and safe computing practices</li>
+                    <li><strong>Network Segmentation:</strong> Isolate critical systems to prevent lateral malware movement</li>
+                    <li><strong>Backup Systems:</strong> Maintain regular backups to recover from ransomware or destructive malware</li>
+                    <li><strong>Monitoring:</strong> Implement continuous monitoring for unusual behavior and traffic patterns</li>
+                </ul>
+                
+                <h3>Conclusion</h3>
+                <p>Understanding malware behavior is crucial for effective cybersecurity. Viruses, worms, and trojans each require different defensive approaches. A comprehensive security strategy must address all threat vectors through technology, processes, and user awareness.</p>
+            `;
+            
+            reportArea.classList.add('active');
+            reportArea.scrollIntoView({ behavior: 'smooth' });
+            addLog('Detailed analysis report generated', 'system');
+        }
+
+        // Initialize on load
+        initializeGrid();
+        addLog('Malware simulation system initialized', 'system');
+    </script>
+</body>
+</html>
